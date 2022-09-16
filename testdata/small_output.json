@@ -1,0 +1,11 @@
+{
+    "children": {
+        "A": {
+            "children": {
+                "1": {
+                    "item": true
+                }
+            }
+        }
+    }
+}
