@@ -1,7 +1,10 @@
 package parser
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 type Parser interface {
-	ParseFile(file io.Reader) (map[string]interface{}, error)
+	ParseFile(ctx context.Context, file io.Reader) (map[string]interface{}, error)
 }
