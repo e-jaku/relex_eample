@@ -1,12 +1,16 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/formulatehq/data-engineer/internal/parser"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
+	"golang.org/x/xerrors"
 )
+
+const MAX_SIZE = 1024 * 1024 * 10 // Limit both memory and file size to 10MB max
 
 type ParserHandler struct {
 	logger *zerolog.Logger
@@ -30,11 +34,47 @@ func (h *ParserHandler) Router() *chi.Mux {
 	return r
 }
 
-// TODO: add file request handler  functionality
 func (h *ParserHandler) handleParseFile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := h.logger.With().Str("handler", "handleParseFile").Logger()
 	logger.Info().Msg("Parsing file...")
 
-	h.parser.ParseFile(ctx, nil) // file will be passed here
+	if contentType := r.Header.Get("Content-Type"); contentType != "text/csv" {
+		h.sendJSON(w, http.StatusUnsupportedMediaType, xerrors.Errorf("Unsupported media type: %s", contentType))
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, MAX_SIZE)
+	defer r.Body.Close()
+
+	data, err := h.parser.ParseFile(ctx, r.Body)
+	if err != nil {
+		//TODO: parse the correct code here, will use the error package for it
+		h.sendJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	h.sendJSON(w, http.StatusOK, data)
+}
+
+func (h *ParserHandler) sendJSON(w http.ResponseWriter, status int, data interface{}) {
+	type httpError struct {
+		Message string `json:"message"`
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	if status > http.StatusCreated {
+		h.logger.Error().Msgf("Request failed: %v", data)
+		if err := json.NewEncoder(w).Encode(&httpError{Message: data.(string)}); err != nil {
+			h.logger.Error().Err(err).Msg("Could not send json response")
+		}
+
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(&data); err != nil {
+		h.logger.Error().Err(err).Msg("Could not send json response")
+	}
 }

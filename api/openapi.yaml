@@ -6,3 +6,47 @@ info:
 servers:
   - url: http://localhost:8080
     description: Local running instance
+paths:
+  /:
+    post:
+      summary: Parse a new file
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema:
+              type: string
+              format: binary
+            examples:
+              sampleCSV:
+                value: |
+                  level_1,item_id
+                  A,1
+      responses:
+        '200':
+          description: The parsed JSON representation of the CSV data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  children:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        children:
+                          type: object
+                          additionalProperties:
+                            type: object
+                            properties:
+                              item:
+                                type: boolean
+              example:
+                children:
+                  A:
+                    children:
+                      "1":
+                        item: true
+        '415':
+          description: Unsupported Media Type
