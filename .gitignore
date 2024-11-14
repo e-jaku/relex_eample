@@ -1,0 +1,8 @@
+# build binary
+bin
+
+# coverage file
+coverage.out
+
+#ide
+.vscode
