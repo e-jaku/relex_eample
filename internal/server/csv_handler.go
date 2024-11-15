@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/formulatehq/data-engineer/internal/errors"
 	"github.com/formulatehq/data-engineer/internal/parser"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -12,31 +13,31 @@ import (
 
 const MAX_SIZE = 1024 * 1024 * 10 // Limit both memory and file size to 10MB max
 
-type ParserHandler struct {
+type CSVHandler struct {
 	logger *zerolog.Logger
 	parser parser.Parser
 }
 
-func NewParserHandler(logger *zerolog.Logger, parser parser.Parser) *ParserHandler {
-	return &ParserHandler{
+func NewCSVHandler(logger *zerolog.Logger, parser parser.Parser) *CSVHandler {
+	return &CSVHandler{
 		logger: logger,
 		parser: parser,
 	}
 }
 
-func (h *ParserHandler) Router() *chi.Mux {
+func (h *CSVHandler) Router() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Group(func(r chi.Router) {
-		r.Post("/", h.handleParseFile)
+		r.Post("/", h.handleParseCSV)
 	})
 
 	return r
 }
 
-func (h *ParserHandler) handleParseFile(w http.ResponseWriter, r *http.Request) {
+func (h *CSVHandler) handleParseCSV(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := h.logger.With().Str("handler", "handleParseFile").Logger()
+	logger := h.logger.With().Str("handler", "handleParseCSV").Logger()
 	logger.Info().Msg("Parsing file...")
 
 	if contentType := r.Header.Get("Content-Type"); contentType != "text/csv" {
@@ -49,15 +50,18 @@ func (h *ParserHandler) handleParseFile(w http.ResponseWriter, r *http.Request) 
 
 	data, err := h.parser.ParseFile(ctx, r.Body)
 	if err != nil {
-		//TODO: parse the correct code here, will use the error package for it
-		h.sendJSON(w, http.StatusBadRequest, err.Error())
+		if errors.IsKnownUserError(err) {
+			h.sendJSON(w, http.StatusBadRequest, err.Error())
+		} else {
+			h.sendJSON(w, http.StatusInternalServerError, err.Error())
+		}
 		return
 	}
 
 	h.sendJSON(w, http.StatusOK, data)
 }
 
-func (h *ParserHandler) sendJSON(w http.ResponseWriter, status int, data interface{}) {
+func (h *CSVHandler) sendJSON(w http.ResponseWriter, status int, data interface{}) {
 	type httpError struct {
 		Message string `json:"message"`
 	}

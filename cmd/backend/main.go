@@ -35,7 +35,7 @@ func run(ctx context.Context, logger *zerolog.Logger) error {
 	csvParser := parser.NewCsvParser()
 
 	svr := server.NewServer(cfg, func(m chi.Router) {
-		m.Mount("/", server.NewParserHandler(logger, csvParser).Router())
+		m.Mount("/", server.NewCSVHandler(logger, csvParser).Router())
 	})
 
 	signal.Notify(quit, os.Interrupt)

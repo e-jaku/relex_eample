@@ -28,7 +28,7 @@ type Node struct {
 
 func Test(t *testing.T) {
 	testServer := "http://localhost:8080"
-
+	
 	tests := []testDefinition{
 		{
 			Description:    "well-formed payload",
@@ -113,7 +113,7 @@ func Test(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("got %v, want %v", got, test.Want)
+				t.Errorf("got %v, want %v", got, want)
 			}
 		})
 	}
