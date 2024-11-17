@@ -12,16 +12,27 @@ import (
 )
 
 func TestParseFile(t *testing.T) {
-	str := `level_1,level_2,level_3,item_id
+	validFile := `level_1,level_2,level_3,item_id
 1,12,103,12507622
 1,13,,32622917
 `
-	reader := strings.NewReader(str)
-	parse := &CsvParser{}
+	reader := strings.NewReader(validFile)
+	parser := &CsvParser{concurrency: 10}
 
-	hierarchy, err := parse.ParseFile(context.Background(), reader)
+	hierarchy, err := parser.ParseFile(context.Background(), reader)
 	require.NoError(t, err)
-	require.NotNil(t, hierarchy)
+	require.NotNil(t, hierarchy.Children)
+
+	invalidFile := `level_1,level_2,level_3,item_id
+,,103,12507622
+1,,,32622917
+`
+
+	invalidFileReader := strings.NewReader(invalidFile)
+	res, err := parser.ParseFile(context.Background(), invalidFileReader)
+	require.Error(t, err)
+	require.ErrorIs(t, err, errors.ErrMissingParentElement)
+	require.Nil(t, res)
 }
 
 func TestExtractColIndexes(t *testing.T) {
