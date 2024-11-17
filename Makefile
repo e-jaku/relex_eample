@@ -1,15 +1,19 @@
 PKG := ./...
 COVERAGE_FILE := coverage.out
 
-.PHONY: all test test-coverage build run clean
+.PHONY: all test test-coverage test-with-backend build run clean
 
 all: docker-up
 
-test: run-test
+test:
 	@echo "Running tests..."
-# enforce running stop independednt if test fail or succeede	
+	go test $(PKG) -count=1
+
+test-with-backend: run-for-test
+	@echo "Running test with running backend..."
+# enforce running stop independent if test fails or succeed
 	@trap "$(MAKE) stop" EXIT; \
-	go test $(PKG)
+	go test $(PKG) -count=1
 
 test-coverage:
 	@echo "Running tests with coverage..."
@@ -23,7 +27,7 @@ run: build
 	@echo "Running application..."
 	./bin/backend
 
-run-test: build
+run-for-test: build
 	@echo "Running application for integration testing..."
 	./bin/backend & echo $$! > server.pid
 

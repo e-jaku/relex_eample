@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/formulatehq/data-engineer/internal/errors"
-	"github.com/formulatehq/data-engineer/internal/parser"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"golang.org/x/xerrors"
@@ -15,10 +14,10 @@ const MAX_SIZE = 1024 * 1024 * 10 // Limit both memory and file size to 10MB max
 
 type CSVHandler struct {
 	logger *zerolog.Logger
-	parser parser.Parser
+	parser Parser
 }
 
-func NewCSVHandler(logger *zerolog.Logger, parser parser.Parser) *CSVHandler {
+func NewCSVHandler(logger *zerolog.Logger, parser Parser) *CSVHandler {
 	return &CSVHandler{
 		logger: logger,
 		parser: parser,

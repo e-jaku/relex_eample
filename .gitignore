@@ -6,3 +6,6 @@ coverage.out
 
 #ide
 .vscode
+
+#tests
+server.pid

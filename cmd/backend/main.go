@@ -8,7 +8,7 @@ import (
 	"os/signal"
 
 	"github.com/formulatehq/data-engineer/internal/config"
-	"github.com/formulatehq/data-engineer/internal/parser"
+	"github.com/formulatehq/data-engineer/internal/csv"
 	"github.com/formulatehq/data-engineer/internal/server"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
@@ -32,7 +32,7 @@ func run(ctx context.Context, logger *zerolog.Logger) error {
 	done := make(chan struct{})
 	quit := make(chan os.Signal, 1)
 
-	csvParser := parser.NewCsvParser()
+	csvParser := csv.NewCsvParser(20)
 
 	svr := server.NewServer(cfg, func(m chi.Router) {
 		m.Mount("/", server.NewCSVHandler(logger, csvParser).Router())
