@@ -109,17 +109,20 @@ func extractColIndexes(columns []string) (columnIndexes, error) {
 		ItemIDIndex: -1,
 	}
 
+	indexMap := map[string]*int{
+		LV1:     &colIndexes.LV1Index,
+		LV2:     &colIndexes.LV2Index,
+		LV3:     &colIndexes.LV3Index,
+		ITEM_ID: &colIndexes.ItemIDIndex,
+	}
+
 	for index, col := range columns {
-		switch col {
-		case LV1:
-			colIndexes.LV1Index = index
-		case LV2:
-			colIndexes.LV2Index = index
-		case LV3:
-			colIndexes.LV3Index = index
-		case ITEM_ID:
-			colIndexes.ItemIDIndex = index
-		default:
+		if idxPtr, exists := indexMap[col]; exists {
+			if *idxPtr != -1 {
+				return colIndexes, xerrors.Errorf("failed to extract column index for %s: %w", col, errors.ErrReoccurringColumn)
+			}
+			*idxPtr = index
+		} else {
 			return colIndexes, xerrors.Errorf("unknown column type in header %s: %w", col, errors.ErrUnknownColumn)
 		}
 	}
@@ -139,7 +142,7 @@ func validateColIndexes(colIndexes columnIndexes) error {
 	if colIndexes.LV3Index != -1 {
 		// LV3 defined , makes LV2 required
 		if colIndexes.LV2Index == -1 {
-			return xerrors.Errorf("missing col %s due to presence of %s: %w", LV2, LV3, errors.ErrMissingRequiredColumn)
+			return xerrors.Errorf("missing col %s required due to presence of %s: %w", LV2, LV3, errors.ErrMissingRequiredColumn)
 		}
 	}
 	return nil
@@ -158,6 +161,10 @@ func parseRow(ctx context.Context, rowChan <-chan []string, nodes *domain.Node, 
 				return xerrors.Errorf("failed to get hierarchy levels: %w", err)
 			}
 
+			if colIndexes.ItemIDIndex >= len(row) {
+				return xerrors.Errorf("failed to parse invalid row %v missing %s: %w", row, ITEM_ID, errors.ErrMissingRequiredValue)
+			}
+
 			nodes.AddNode(levels, row[colIndexes.ItemIDIndex])
 		case <-ctx.Done():
 			return ctx.Err()
@@ -168,6 +175,10 @@ func parseRow(ctx context.Context, rowChan <-chan []string, nodes *domain.Node, 
 func extractHierarchyLevels(row []string, colIndexes columnIndexes) ([]string, error) {
 	var levels []string
 
+	if colIndexes.LV1Index >= len(row) {
+		return nil, xerrors.Errorf("failed to parse invalid row %v, missing %s: %w", row, LV1, errors.ErrMissingRequiredValue)
+	}
+
 	lvCurrent := row[colIndexes.LV1Index]
 	if lvCurrent != "" {
 		levels = append(levels, lvCurrent) // add first lv
@@ -175,6 +186,10 @@ func extractHierarchyLevels(row []string, colIndexes columnIndexes) ([]string, e
 
 	lvNext := ""
 	if colIndexes.LV2Index != -1 {
+		if colIndexes.LV2Index >= len(row) {
+			return nil, xerrors.Errorf("failed to parse invalid row %v, missing %s: %w", row, LV2, errors.ErrMissingRequiredValue)
+		}
+
 		lvNext = row[colIndexes.LV2Index]
 		if lvCurrent == "" && lvNext != "" {
 			// invalid n empty n+1 non-empty case
@@ -187,6 +202,9 @@ func extractHierarchyLevels(row []string, colIndexes columnIndexes) ([]string, e
 	}
 
 	if colIndexes.LV3Index != -1 {
+		if colIndexes.LV3Index >= len(row) {
+			return nil, xerrors.Errorf("failed to parse invalid row %v, missing %s: %w", row, LV3, errors.ErrMissingRequiredValue)
+		}
 		lvNext = row[colIndexes.LV3Index]
 		if lvCurrent == "" && lvNext != "" {
 			// invalid n empty n+1 non-empty case
