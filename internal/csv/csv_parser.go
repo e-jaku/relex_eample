@@ -19,15 +19,15 @@ const (
 	LV_PREFIX string = "level_"
 )
 
-type CsvParser struct {
+type CSVParser struct {
 	concurrency int
 }
 
-func NewCsvParser(concurrency int) *CsvParser {
+func NewCSVParser(concurrency int) *CSVParser {
 	if concurrency < 1 {
 		concurrency = 10 // default to 10
 	}
-	return &CsvParser{
+	return &CSVParser{
 		concurrency: concurrency,
 	}
 }
@@ -36,7 +36,7 @@ func NewCsvParser(concurrency int) *CsvParser {
 // processed concurrently by a worker goroutine.
 // If the ctx is canceled or an error occurs during reading the reading process is aborted and the error returned.
 // Returns a domain.Node object containing the built hierarchy.
-func (p *CsvParser) ParseFile(ctx context.Context, file io.Reader) (*domain.Node, error) {
+func (p *CSVParser) ParseFile(ctx context.Context, file io.Reader) (*domain.Node, error) {
 	nodes := domain.NewNode()
 	csvReader := csv.NewReader(file)
 

@@ -17,7 +17,7 @@ func TestParseFile(t *testing.T) {
 1,13,,32622917
 `
 	reader := strings.NewReader(validFile)
-	parser := &CsvParser{concurrency: 10}
+	parser := &CSVParser{concurrency: 10}
 
 	hierarchy, err := parser.ParseFile(context.Background(), reader)
 	require.NoError(t, err)

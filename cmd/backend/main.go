@@ -32,7 +32,7 @@ func run(ctx context.Context, logger *zerolog.Logger) error {
 	done := make(chan struct{})
 	quit := make(chan os.Signal, 1)
 
-	csvParser := csv.NewCsvParser(20)
+	csvParser := csv.NewCSVParser(20)
 
 	svr := server.NewServer(cfg, func(m chi.Router) {
 		m.Mount("/", server.NewCSVHandler(logger, csvParser).Router())
