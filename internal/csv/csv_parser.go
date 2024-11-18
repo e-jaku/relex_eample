@@ -188,7 +188,7 @@ func extractHierarchyLevels(row []string, colIndexes map[string]int) ([]string, 
 		colName := fmt.Sprintf("%s%d", LV_PREFIX, i)
 		index, ok := colIndexes[colName]
 		if !ok {
-			return nil, xerrors.Errorf("invalid index found: %s", colName)
+			return nil, xerrors.Errorf("missing index for column: %s", colName)
 		}
 
 		if index >= len(row) {

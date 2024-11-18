@@ -40,7 +40,7 @@ func (h *CSVHandler) handleParseCSV(w http.ResponseWriter, r *http.Request) {
 	logger.Info().Msg("Parsing file...")
 
 	if contentType := r.Header.Get("Content-Type"); contentType != "text/csv" {
-		h.sendJSON(w, http.StatusUnsupportedMediaType, xerrors.Errorf("Unsupported media type: %s", contentType))
+		h.sendJSON(w, http.StatusUnsupportedMediaType, xerrors.Errorf("Unsupported media type: %s", contentType).Error())
 		return
 	}
 
