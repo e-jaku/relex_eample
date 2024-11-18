@@ -190,7 +190,7 @@ func TestParseRow(t *testing.T) {
 	err := errG.Wait()
 	require.ErrorContains(t, err, "context canceled")
 
-	// Restart the parseRow goroutine with the not canceled context
+	// restart the parseRow goroutine with the not canceled context
 	errG, _ = errgroup.WithContext(ctx)
 	errG.Go(func() error {
 		return parseRow(ctx, rowChan, nodes, colIndexes)
@@ -200,7 +200,7 @@ func TestParseRow(t *testing.T) {
 	err = errG.Wait()
 	require.ErrorIs(t, err, errors.ErrMissingRequiredValue)
 
-	rowChan <- []string{"level_1", "level_2", ITEM_ID} // send over valid last row
+	rowChan <- []string{"level_1", "level_2", ITEM_ID} // send over valid row
 	close(rowChan)
 
 	errG, _ = errgroup.WithContext(ctx)
