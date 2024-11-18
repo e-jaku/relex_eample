@@ -28,7 +28,7 @@ type Node struct {
 
 func Test(t *testing.T) {
 	testServer := "http://localhost:8080"
-	
+
 	tests := []testDefinition{
 		{
 			Description:    "well-formed payload",
