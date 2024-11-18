@@ -14,6 +14,10 @@ func NewNode() *Node {
 	}
 }
 
+// AddNode adds to the existing node hierarchy a new item Node.
+// It iterates the depth levels specified in the levels []string and adds the item Node at the deepest point.
+// If in-between levels are missing this method creates them.
+// Adding to Node hierarchy is guarded via lock, and therefore threadsafe.
 func (n *Node) AddNode(levels []string, itemID string) {
 	n.mu.Lock()
 	defer n.mu.Unlock()

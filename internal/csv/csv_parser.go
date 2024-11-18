@@ -19,11 +19,9 @@ const (
 	LV_PREFIX string = "level_"
 )
 
-type (
-	CsvParser struct {
-		concurrency int
-	}
-)
+type CsvParser struct {
+	concurrency int
+}
 
 func NewCsvParser(concurrency int) *CsvParser {
 	if concurrency < 1 {
@@ -34,6 +32,10 @@ func NewCsvParser(concurrency int) *CsvParser {
 	}
 }
 
+// ParseFile reads an parses a CSV file. Each row read is pushed to a buffered channel and
+// processed concurrently by a worker goroutine.
+// If the ctx is canceled or an error occurs during reading the reading process is aborted and the error returned.
+// Returns a domain.Node object containing the built hierarchy.
 func (p *CsvParser) ParseFile(ctx context.Context, file io.Reader) (*domain.Node, error) {
 	nodes := domain.NewNode()
 	csvReader := csv.NewReader(file)
@@ -78,6 +80,8 @@ func (p *CsvParser) ParseFile(ctx context.Context, file io.Reader) (*domain.Node
 	return nodes, nil
 }
 
+// parseHeader reads the first row of a CSV and deduces the column indexes of each column.
+// The presence of the required columns, reoccurrence and column hierarchy is validated.
 func parseHeader(csvReader *csv.Reader) (map[string]int, error) {
 	header, err := csvReader.Read()
 	if err != nil {
@@ -92,6 +96,12 @@ func parseHeader(csvReader *csv.Reader) (map[string]int, error) {
 	return colIndexes, nil
 }
 
+// extractColIndexes extracts the columns indexes from the read row.
+// The column indexes are returned as a map[string]int with the key being the level name f.e. "level_1" and
+// the value the index of the column this level appears.
+// Presence of level "n" when "n + 1" appears is validated.
+// The method returns an error if a column is present more then once f.e. ["level_1", "level_2", "level_1"].
+// The method also returns an error if "level_1" and "item_id" are not present since they are defined as required in this scenario.
 func extractColIndexes(columns []string) (map[string]int, error) {
 	colIndexes := make(map[string]int)
 	seenLevels := make(map[int]bool)
@@ -138,6 +148,8 @@ func extractColIndexes(columns []string) (map[string]int, error) {
 	return colIndexes, nil
 }
 
+// parseRow reads from the buffered channel the pushed row and adds it to the node hierarchy.
+// If the ctx is canceled, the channel is closed or the parsing of the row fails the execution is aborted.
 func parseRow(ctx context.Context, rowChan <-chan []string, nodes *domain.Node, colIndexes map[string]int) error {
 	for {
 		select {
@@ -163,6 +175,11 @@ func parseRow(ctx context.Context, rowChan <-chan []string, nodes *domain.Node, 
 	}
 }
 
+// extractHierarchyLevels builds the necessary levels contained in a row for adding to the node hierarchy.
+// If a row does contain less elements than specified in the header or if a parent element is empty while the child
+// element is present this method will return an error.
+// This method returns the constructed level hierarchy in increasing depth order f.e.
+// {"level_1", "level_2", "level_3"}
 func extractHierarchyLevels(row []string, colIndexes map[string]int) ([]string, error) {
 	levels := []string{}
 	currentParent := ""
