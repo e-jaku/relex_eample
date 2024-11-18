@@ -10,7 +10,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
-const MAX_SIZE = 1024 * 1024 * 10 // Limit both memory and file size to 10MB max
+const (
+	MAX_SIZE             = 1024 * 1024 * 10 // Limit both memory and file size to 10MB max
+	ALLOWED_CONTENT_TYPE = "text/csv"
+)
 
 type CSVHandler struct {
 	logger *zerolog.Logger
@@ -39,7 +42,7 @@ func (h *CSVHandler) handleParseCSV(w http.ResponseWriter, r *http.Request) {
 	logger := h.logger.With().Str("handler", "handleParseCSV").Logger()
 	logger.Info().Msg("Parsing file...")
 
-	if contentType := r.Header.Get("Content-Type"); contentType != "text/csv" {
+	if contentType := r.Header.Get("Content-Type"); contentType != ALLOWED_CONTENT_TYPE {
 		h.sendJSON(w, http.StatusUnsupportedMediaType, xerrors.Errorf("Unsupported media type: %s", contentType).Error())
 		return
 	}
