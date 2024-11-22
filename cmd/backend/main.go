@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/formulatehq/data-engineer/internal/config"
 	"github.com/formulatehq/data-engineer/internal/csv"
@@ -38,7 +39,7 @@ func run(ctx context.Context, logger *zerolog.Logger) error {
 		m.Mount("/", server.NewCSVHandler(logger, csvParser).Router())
 	})
 
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	// ensure that the server shuts down gracefully
 	go func() {
