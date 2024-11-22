@@ -1,22 +1,22 @@
 package errors
 
-import "errors"
+var ErrValidationError = NewValidationError("validation error")
 
-var ErrUnknownColumn = errors.New("unknown column")
-var ErrMissingRequiredColumn = errors.New("missing required column")
-var ErrMissingRequiredValue = errors.New("missing required column value")
-var ErrMissingParentElement = errors.New("missing value for parent element")
-var ErrReoccurringColumn = errors.New("column index already mapped")
+type ValidationError struct {
+	Message string
+}
 
-var KnownUserErrors = []error{ErrUnknownColumn, ErrMissingRequiredColumn,
-	ErrMissingParentElement, ErrMissingRequiredValue, ErrReoccurringColumn}
-
-func IsKnownUserError(err error) bool {
-	for _, known := range KnownUserErrors {
-		if errors.Is(err, known) {
-			return true
-		}
+func NewValidationError(message string) error {
+	return &ValidationError{
+		Message: message,
 	}
+}
 
-	return false
+func (e *ValidationError) Error() string {
+	return e.Message
+}
+
+func (e *ValidationError) Is(target error) bool {
+	_, ok := target.(*ValidationError)
+	return ok
 }

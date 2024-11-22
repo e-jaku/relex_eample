@@ -13,6 +13,7 @@ func NewServer(cfg *config.Config, f func(chi.Router)) *http.Server {
 
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
 	r.Use(middleware.Timeout(cfg.RequestTimeout))
 
 	f(r)

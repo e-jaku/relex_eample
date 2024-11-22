@@ -2,9 +2,10 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
-	"github.com/formulatehq/data-engineer/internal/errors"
+	validation_errors "github.com/formulatehq/data-engineer/internal/errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 	"golang.org/x/xerrors"
@@ -43,7 +44,7 @@ func (h *CSVHandler) handleParseCSV(w http.ResponseWriter, r *http.Request) {
 	logger.Info().Msg("Parsing file...")
 
 	if contentType := r.Header.Get("Content-Type"); contentType != ALLOWED_CONTENT_TYPE {
-		h.sendJSON(w, http.StatusUnsupportedMediaType, xerrors.Errorf("Unsupported media type: %s", contentType).Error())
+		h.sendErr(w, http.StatusUnsupportedMediaType, xerrors.Errorf("Unsupported media type: %s", contentType).Error())
 		return
 	}
 
@@ -52,10 +53,10 @@ func (h *CSVHandler) handleParseCSV(w http.ResponseWriter, r *http.Request) {
 
 	data, err := h.parser.ParseFile(ctx, r.Body)
 	if err != nil {
-		if errors.IsKnownUserError(err) {
-			h.sendJSON(w, http.StatusBadRequest, err.Error())
+		if errors.Is(err, validation_errors.ErrValidationError) {
+			h.sendErr(w, http.StatusBadRequest, err.Error())
 		} else {
-			h.sendJSON(w, http.StatusInternalServerError, err.Error())
+			h.sendErr(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
@@ -64,6 +65,15 @@ func (h *CSVHandler) handleParseCSV(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CSVHandler) sendJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	if err := json.NewEncoder(w).Encode(&data); err != nil {
+		h.logger.Error().Err(err).Msg("Could not send json response")
+	}
+}
+
+func (h *CSVHandler) sendErr(w http.ResponseWriter, status int, msg string) {
 	type httpError struct {
 		Message string `json:"message"`
 	}
@@ -71,16 +81,8 @@ func (h *CSVHandler) sendJSON(w http.ResponseWriter, status int, data interface{
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
-	if status > http.StatusCreated {
-		h.logger.Error().Msgf("Request failed: %v", data)
-		if err := json.NewEncoder(w).Encode(&httpError{Message: data.(string)}); err != nil {
-			h.logger.Error().Err(err).Msg("Could not send json response")
-		}
-
-		return
-	}
-
-	if err := json.NewEncoder(w).Encode(&data); err != nil {
+	h.logger.Error().Msgf("Request failed: %v", msg)
+	if err := json.NewEncoder(w).Encode(&httpError{Message: msg}); err != nil {
 		h.logger.Error().Err(err).Msg("Could not send json response")
 	}
 }

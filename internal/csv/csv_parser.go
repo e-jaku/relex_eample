@@ -59,9 +59,9 @@ func (p *CSVParser) ParseFile(ctx context.Context, file io.Reader) (*domain.Node
 				return xerrors.Errorf("failed to read CSV row: %w", err)
 			}
 			select {
-			case rowChan <- row:
 			case <-ctx.Done():
 				return ctx.Err()
+			case rowChan <- row:
 			}
 		}
 		return nil
@@ -109,7 +109,7 @@ func extractColIndexes(columns []string) (map[string]int, error) {
 	for index, col := range columns {
 		if col == ITEM_ID {
 			if _, exists := colIndexes[ITEM_ID]; exists {
-				return nil, xerrors.Errorf("duplicate column %s found: %w", ITEM_ID, errors.ErrReoccurringColumn)
+				return nil, errors.NewValidationError(fmt.Sprintf("duplicate column %s found in columns %v", ITEM_ID, columns))
 			}
 			colIndexes[ITEM_ID] = index
 			continue
@@ -119,29 +119,29 @@ func extractColIndexes(columns []string) (map[string]int, error) {
 			levelStr := strings.TrimPrefix(col, LV_PREFIX)
 			levelNum, err := strconv.Atoi(levelStr)
 			if err != nil {
-				return nil, xerrors.Errorf("invalid level column %s: %w", col, errors.ErrUnknownColumn)
+				return nil, errors.NewValidationError(fmt.Sprintf("invalid level column %s: %v", col, err))
 			}
 			if seenLevels[levelNum] {
-				return nil, xerrors.Errorf("duplicate level column %s found: %w", col, errors.ErrReoccurringColumn)
+				return nil, errors.NewValidationError(fmt.Sprintf("duplicate column %s found in columns %v", col, columns))
 			}
 			colIndexes[col] = index
 			seenLevels[levelNum] = true
 		} else {
-			return nil, xerrors.Errorf("unknown column type in header %s: %w", col, errors.ErrUnknownColumn)
+			return nil, errors.NewValidationError(fmt.Sprintf("unknown column type %s in header: %v", col, columns))
 		}
 	}
 
 	if _, exists := colIndexes[ITEM_ID]; !exists {
-		return nil, xerrors.Errorf("missing required column %s: %w", ITEM_ID, errors.ErrMissingRequiredColumn)
+		return nil, errors.NewValidationError(fmt.Sprintf("missing required column %s in columns %v", ITEM_ID, columns))
 	}
 
 	if _, exists := colIndexes[fmt.Sprintf("%s1", LV_PREFIX)]; !exists {
-		return nil, xerrors.Errorf("missing required column %s: %w", fmt.Sprintf("%s1", LV_PREFIX), errors.ErrMissingRequiredColumn)
+		return nil, errors.NewValidationError(fmt.Sprintf("missing required column %s in columns %v", fmt.Sprintf("%s1", LV_PREFIX), columns))
 	}
 
 	for level := range seenLevels {
 		if level > 1 && !seenLevels[level-1] {
-			return nil, xerrors.Errorf("level n+1 requires level n to be present %v: %w", columns, errors.ErrMissingParentElement)
+			return nil, errors.NewValidationError(fmt.Sprintf("missing parent element: level n+1 requires level n to be present %v", columns))
 		}
 	}
 
@@ -153,6 +153,8 @@ func extractColIndexes(columns []string) (map[string]int, error) {
 func parseRow(ctx context.Context, rowChan <-chan []string, nodes *domain.Node, colIndexes map[string]int) error {
 	for {
 		select {
+		case <-ctx.Done():
+			return ctx.Err()
 		case row, ok := <-rowChan:
 			if !ok {
 				return nil
@@ -165,12 +167,15 @@ func parseRow(ctx context.Context, rowChan <-chan []string, nodes *domain.Node, 
 
 			itemIndex, ok := colIndexes[ITEM_ID]
 			if !ok || itemIndex >= len(row) {
-				return xerrors.Errorf("failed to parse row %v missing %s: %w", row, ITEM_ID, errors.ErrMissingRequiredValue)
+				return errors.NewValidationError(fmt.Sprintf("failed to parse row %v missing index for %s", row, ITEM_ID))
 			}
 
-			nodes.AddNode(levels, row[itemIndex])
-		case <-ctx.Done():
-			return ctx.Err()
+			item := row[itemIndex]
+			if item == "" {
+				return errors.NewValidationError(fmt.Sprintf("failed to parse row %v missing required value for %s", row, ITEM_ID))
+			}
+
+			nodes.AddNode(levels, item)
 		}
 	}
 }
@@ -192,16 +197,22 @@ func extractHierarchyLevels(row []string, colIndexes map[string]int) ([]string, 
 		}
 
 		if index >= len(row) {
-			return nil, xerrors.Errorf("failed to parse invalid row %v, missing %s: %w", row, colName, errors.ErrMissingRequiredValue)
+			return nil, errors.NewValidationError(fmt.Sprintf("failed to parse row %v missing value for %s", row, colName))
 		}
 
 		currentLevel := row[index]
-		if i != 1 && currentParent == "" && currentLevel != "" {
-			return nil, xerrors.Errorf("failed to parse invalid row %v: %w", row, errors.ErrMissingParentElement)
+		if i == 1 && currentLevel == "" {
+			return nil, errors.NewValidationError(fmt.Sprintf("failed to parse row %v missing required value for %s", row, colName))
 		}
+
+		if i != 1 && currentParent == "" && currentLevel != "" {
+			return nil, errors.NewValidationError(fmt.Sprintf("failed to parse row %v missing required parent element for %s", row, colName))
+		}
+
 		if currentLevel != "" {
 			levels = append(levels, currentLevel)
 		}
+
 		currentParent = currentLevel
 	}
 	return levels, nil
