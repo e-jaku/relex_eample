@@ -1,0 +1,11 @@
+# build binary
+bin
+
+# coverage file
+coverage.out
+
+#ide
+.vscode
+
+#tests
+server.pid

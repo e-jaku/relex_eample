@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -103,7 +102,7 @@ func Test(t *testing.T) {
 
 			defer resp.Body.Close()
 
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := io.ReadAll(resp.Body)
 			if err != nil {
 				t.Fatalf("could not read body: %s", err)
 			}
@@ -114,7 +113,7 @@ func Test(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(got, want) {
-				t.Errorf("got %v, want %v", got, test.Want)
+				t.Errorf("got %v, want %v", got, want)
 			}
 		})
 	}
@@ -150,7 +149,7 @@ func loadTest(test testDefinition) (reqBody io.Reader, want Node, err error) {
 	}
 
 	if test.WantFilename != "" {
-		b, readErr := ioutil.ReadFile(test.WantFilename)
+		b, readErr := os.ReadFile(test.WantFilename)
 		if readErr != nil {
 			err = fmt.Errorf("could not read golden output file: %s", readErr)
 			return
